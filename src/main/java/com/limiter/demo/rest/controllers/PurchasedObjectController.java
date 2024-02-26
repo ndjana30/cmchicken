@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("api/v1/auth")
-@CrossOrigin(origins = {"http://127.0.0.1:3001", "http://localhost:3001" })
+@CrossOrigin(origins = "*")
 
 public class PurchasedObjectController {
     @Autowired

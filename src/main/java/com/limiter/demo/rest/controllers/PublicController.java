@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("api/public")
-@CrossOrigin(origins = {"http://127.0.0.1:3001", "http://localhost:3001" })
+@CrossOrigin(origins = "*")
 
 public class PublicController {
     @Autowired
