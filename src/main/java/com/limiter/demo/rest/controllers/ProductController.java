@@ -45,7 +45,13 @@ public class ProductController {
         p.setQuantity(quantity);
         p.setPrice(Double.valueOf(price));
         p.setName(name);
-        p.setImage(image.getBytes());
+        try {
+            p.setImage(image.getBytes());
+        }
+        catch (IOException exception)
+        {
+            return "Image could not be uploaded: "+ exception.getCause()+ exception.getMessage();
+        }
         productRepository.save(p);
         return new ResponseEntity<>("Product added", HttpStatus.CREATED);
     }
