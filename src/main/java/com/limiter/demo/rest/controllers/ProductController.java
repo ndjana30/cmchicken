@@ -1,20 +1,26 @@
 package com.limiter.demo.rest.controllers;
-
 import com.limiter.demo.models.Availability;
 import com.limiter.demo.models.Product;
 import com.limiter.demo.models.UserEntity;
 import com.limiter.demo.repositories.ProductRepository;
 import com.limiter.demo.repositories.PurchaseObjectRepo;
 import com.limiter.demo.repositories.UserRepository;
+import net.coobird.thumbnailator.Thumbnails;
+import org.apache.tomcat.util.http.fileupload.impl.SizeLimitExceededException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import javax.imageio.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Optional;
+import org.apache.commons.imaging.*;
 
 @RestController
 @RequestMapping("api/v1/auth")
@@ -31,29 +37,87 @@ public class ProductController {
         this.purchaseObjectRepo = purchaseObjectRepo;
         this.productRepository=productRepository;
     }
+
+    public byte[] compressImage(byte[] imageBytes, float compressionQuality, String format) throws IOException {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes);
+        BufferedImage image = ImageIO.read(inputStream);
+
+        // Choose an appropriate image format (e.g., JPEG, PNG)
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageWriter writer = ImageIO.getImageWritersByFormatName(format).next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(compressionQuality);
+
+        // Prepare image output stream
+        ImageIO.write(image, format, outputStream);
+
+        return outputStream.toByteArray();
+    }
+    public byte[] resizeImage
+            (
+            byte[] originalImage,
+            int targetWidth,
+            int targetHeight,
+            String format) throws Exception {
+        /*BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        BufferedImage resizedImage = ImageUtils.scale(image, targetWidth, targetHeight);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(resizedImage, "jpg", outputStream);
+        return outputStream.toByteArray();*/
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(originalImage);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+          Thumbnails.of(inputStream)
+                .size(targetWidth,targetHeight)
+                .outputFormat(format)
+                .outputQuality(0.7f)
+                 .toOutputStream(outputStream);
+        return outputStream.toByteArray();
+    }
+
     @PostMapping("product/{quantity}/create")
     public Object addProduct
             (@PathVariable int quantity,
              @RequestParam("name") String name,
              @RequestParam("image") MultipartFile image,
              @RequestParam("price") double price,
-             @RequestParam("description") String description) throws IOException
-    {
+             @RequestParam("description") String description) throws Exception {
         Product p = new Product();
         p.setAddedDate(new Date());
         p.setDescription(description);
         p.setQuantity(quantity);
         p.setPrice(Double.valueOf(price));
         p.setName(name);
-        try {
-            p.setImage(image.getBytes());
-        }
-        catch (IOException exception)
+
+        if (image.isEmpty() || image == null)
         {
-            return "Image could not be uploaded: "+ exception.getCause()+ exception.getMessage();
+            return new ResponseEntity<>("No image, Image is required",HttpStatus.BAD_REQUEST);
         }
-        productRepository.save(p);
-        return new ResponseEntity<>("Product added", HttpStatus.CREATED);
+
+        if (image.getSize() > 2 * 1024 * 1024) {
+            // Image size exceeds limit of 2MB
+                return new ResponseEntity<>("Image size cannot exceed 2MB", HttpStatus.BAD_REQUEST);
+            }
+
+         else if (image.getSize() < 2*1024*1024 && !image.isEmpty() && image!=null)
+        {
+            if(image.getContentType().equals("image/jpg") ||
+                    image.getContentType().equals("image/jpeg") ||
+            image.getContentType().equals("image/png"))
+            {
+//                p.setImage(compressImage(image.getBytes(),0.7f,image.getContentType().substring(6)));
+                p.setImage(resizeImage(compressImage(image.getBytes(),0.55f,image.getContentType().substring(6)),500,350,image.getContentType().substring(6)));
+                productRepository.save(p);
+
+                return new ResponseEntity<>("Product saved", HttpStatus.CREATED);
+            }
+            return new ResponseEntity<>("MEDIA TYPE NOT SUPPORTED", HttpStatus.BAD_REQUEST);
+
+
+        }
+
+        return null;
     }
 
     @PutMapping("product/{id}/{quantity}/increment")
@@ -131,13 +195,14 @@ public class ProductController {
         Optional<Product> product = productRepository.findById(id);
         if(product.isPresent())
         {
-
             productRepository.deleteById(id);
             return new ResponseEntity<>("Product "+product.get().getName()+ "deleted", HttpStatus.OK);
         }
         return new ResponseEntity<>("UNABLE TO FIND PRODUCT, CANNOT DELETE IT", HttpStatus.BAD_REQUEST);
 
     }
+
+
 
 
 }
