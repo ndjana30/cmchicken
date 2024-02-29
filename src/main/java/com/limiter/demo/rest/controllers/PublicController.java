@@ -32,12 +32,10 @@ public class PublicController {
     public Object confirmProducts(List<Product> products)
     {
         Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
-
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         List<Double> sums= new ArrayList<>();
         if(client.isPresent())
         {
-
             for(Product p:products)
             {
                sums.add(p.getPrice()*p.getQuantity());
