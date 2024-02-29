@@ -29,7 +29,7 @@ public class PublicController {
         return new ResponseEntity<>(productRepository.findAll(), HttpStatus.OK);
     }
     @PostMapping("products/confirm")
-    public Object confirmProducts(List<Product> products)
+    public Object confirmProducts(@RequestBody List<Product> products)
     {
         Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
