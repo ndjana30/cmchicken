@@ -18,10 +18,11 @@ public class Purchaseobject {
     private byte[] image;
     private double price;
     private String description;
-    private Boolean bought;
+    private Boolean bought=false;
     private Date addedDate;
     @ManyToOne
     @JoinColumn(name = "user_id",insertable = false,updatable = false)
     private UserEntity user;
     private long user_id;
+    private int quantity;
 }
