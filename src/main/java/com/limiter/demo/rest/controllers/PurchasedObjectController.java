@@ -56,34 +56,5 @@ public class PurchasedObjectController {
     }
 */
 
-    @PostMapping("products/confirm")
-    public Object confirmProducts(List<Product> products)
-    {
-        Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
-        Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
-        List<Double> sums= new ArrayList<>();
-        Map<Double,Integer> values = new HashMap<>();
-        if(client.isPresent())
-        {
-            for(Product p:products)
-            {
-                values.put(p.getPrice(),p.getQuantity());
-            }
-            for(Map.Entry<Double,Integer> entry: values.entrySet())
-            {
-                Double key = entry.getKey();
-                Integer value = entry.getValue();
-                Double result = key*value;
-                sums.add(result);
-            }
-            double sum=0;
-            for(int i=0; i<sums.size(); i++)
-            {
-                sum = sums.get(i) + sum;
-            }
-            return new ResponseEntity<>("SUM IS: "+ sum,HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
-    }
 
 }
