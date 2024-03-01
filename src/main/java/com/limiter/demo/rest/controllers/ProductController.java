@@ -90,17 +90,33 @@ public class ProductController {
         p.setPrice(Double.valueOf(price));
         p.setName(name);
 
-        if (image.isEmpty() || image == null)
+       /* if (image.isEmpty() || image == null)
         {
             return new ResponseEntity<>("No image, Image is required",HttpStatus.BAD_REQUEST);
-        }
+        }*/
 
         if (image.getSize() > 2 * 1024 * 1024) {
             // Image size exceeds limit of 2MB
                 return new ResponseEntity<>("Image size cannot exceed 2MB", HttpStatus.BAD_REQUEST);
             }
+        if(image.isEmpty() || image==null)
+        {
+            try {
+                p.setAddedDate(new Date());
+                p.setDescription(description);
+                p.setQuantity(quantity);
+                p.setPrice(Double.valueOf(price));
+                p.setName(name);
+                productRepository.save(p);
+                return new ResponseEntity<>("Product created with no image", HttpStatus.CREATED);
+            }
+            catch (Exception ex)
+            {
+                return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
+            }
+        }
 
-         else if (image.getSize() < 2*1024*1024 && !image.isEmpty() && image!=null)
+         else if (image.getSize() < 2*1024*1024)
         {
             if(image.getContentType().equals("image/jpg") ||
                     image.getContentType().equals("image/jpeg") ||
