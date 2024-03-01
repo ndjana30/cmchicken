@@ -44,7 +44,8 @@ public class PublicController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         List<Double> sums = new ArrayList<>();
-        if (client.isPresent()) {
+//        if (client.isPresent()) {
+        try {
             for (Product p : products) {
                 sums.add(p.getPrice() * p.getQuantity());
             }
@@ -54,7 +55,12 @@ public class PublicController {
             }
             return new ResponseEntity<>("SUM IS: " + sum, HttpStatus.OK);
         }
-        return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
+        catch (Exception ex)
+        {
+            return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
+        }
+//        }
+//        return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
     }
 
 
@@ -72,7 +78,7 @@ public class PublicController {
     HttpHeaders headers = new HttpHeaders();
     headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 //        headers.setAuthorization("Bearer " + notchPayApiKey);
-    headers.setBearerAuth("Bearer " + notchPayApiKey);
+    headers.set("Authorization", "Bearer " + notchPayApiKey);
 
     HttpEntity<PaymentRequest> entity = new HttpEntity<>(request, headers);
 

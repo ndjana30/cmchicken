@@ -38,8 +38,6 @@ public class SecurityConfig {
                 .authorizeRequests()
                 .antMatchers("/api/public/**")
                 .permitAll()
-                .antMatchers("https://api.notchpay.co/payments")
-                .permitAll()
                 .antMatchers("/api/v1/**")
                 .permitAll()
                 .anyRequest().authenticated()
