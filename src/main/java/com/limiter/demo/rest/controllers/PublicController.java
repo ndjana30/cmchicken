@@ -1,5 +1,9 @@
 package com.limiter.demo.rest.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.limiter.demo.models.Product;
 import com.limiter.demo.models.Purchaseobject;
@@ -35,6 +39,7 @@ public class PublicController {
 
     @Value("${notchpay.api.key}")
     private String notchPayApiKey;
+
     @Autowired
     private ProductRepository productRepository;
     @Autowired
@@ -51,17 +56,18 @@ public class PublicController {
     private static final String API_URL = "https://api.notchpay.co/payments/initialize";
     private static final String VERIFY_URL = "https://api.notchpay.co/payments/";
     public List<Product> z = new ArrayList<>();
+    public List<Purchaseobject> y = new ArrayList<>();
 
     @PostMapping("products/confirm")
     public Object confirmProducts(@RequestBody List<Product> products) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         List<Double> sums = new ArrayList<>();
+        z.addAll(products);
 //        if (client.isPresent()) {
         try {
             for (Product p : products) {
                 sums.add(p.getPrice() * p.getQuantity());
-                z.add(p);
             }
             double sum = 0;
             for (int i = 0; i < sums.size(); i++) {
@@ -73,19 +79,8 @@ public class PublicController {
         {
             return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
         }
-//        }
-//        return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
     }
 
-
-    /*
-    @RequestParam("email") String email,
-                                @RequestParam("currency") String currency,
-                                @RequestParam("amount") int amount,
-                                @RequestParam("phone") String phone,
-                                @RequestParam("reference") String reference,
-                                @RequestParam("description") String description
-    */
 @PostMapping("product/buy")
     public Object sendSomething( @RequestParam("email") String email,
                                  @RequestParam("currency") String currency,
@@ -134,67 +129,70 @@ public class PublicController {
             @Override
             public void run() {
 
-                Purchaseobject po = new Purchaseobject();
-                String[] typ = getPaymentStatus().split(":");
-                String[] tyl = typ[33].split(",");
-                String status = tyl[0].replaceAll("^\"|\"$|\\\"", "");
-                System.out.println(status);
-                if(status.equals("pending") || status.equals("failed") || status.equals("expired"))
-                {
-                    System.out.println("ACTION FAILED AFTER 70 SECONDS");
-                }
-                else if (status.equals("complete"))
-                {
-                    System.out.println("THE STATUS IS COMPLETED");
-                    if(z.isEmpty())
+
+//                String[] typ = getPaymentStatus().split(":");
+                String jsonString=getPaymentStatus();
+                ObjectMapper Mapper = new ObjectMapper();
+                try {
+                    JsonNode rootNode = Mapper.readTree(jsonString);
+                    JsonNode statusNode = rootNode.path("transaction").path("status");
+                    String statusValue = statusNode.asText();
+                    System.out.println("the status is: "+statusValue);
+                    if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
                     {
-                        System.out.println("NO PRODUCTS");
+                        System.out.println("ACTION FAILED AFTER 50 SECONDS");
+
                     }
                     else {
-                        for (int i = 0; i < z.size(); i++) {
-                            po.setQuantity(z.get(i).getQuantity());
-                            po.setPrice(z.get(i).getPrice());
-                            po.setImage(z.get(i).getImage());
-                            po.setDescription(z.get(i).getDescription());
-                            po.setName(z.get(i).getName());
-                            po.setBought(true);
-                            po.setUser_id(user.get().getId());
-                            purchaseObjectRepo.save(po);
-                            System.out.println("ACTION COMPLETED AFTER 70 SECONDS");
+                        if(z.isEmpty())
+                        {
+                            System.out.println("NO PRODUCTS");
+                        }
+                        else {
+
+                                for (int i = 0; i < z.size(); i++) {
+                                    Purchaseobject po = new Purchaseobject();
+                                    po.setId(i+1);
+                                    po.setQuantity(z.get(i).getQuantity());
+                                    po.setPrice(z.get(i).getPrice());
+                                    po.setImage(z.get(i).getImage());
+                                    po.setDescription(z.get(i).getDescription());
+                                    po.setName(z.get(i).getName());
+                                    po.setBought(true);
+                                    po.setUser_id(user.get().getId());
+                                    y.add(po);
+                                }
+
+                            System.out.println(y);
+                                purchaseObjectRepo.saveAll(y);
+                            Timer timer2 = new Timer();
+                            TimerTask timerTask = new TimerTask() {
+                                @Override
+                                public void run() {
+                                    y.clear();
+                                    z.clear();
+                                }
+                            };
+                            long delay2 = 2 * 1000;
+                            timer2.schedule(timerTask,delay2);
+
                         }
                     }
                 }
-//               String tt = typ[28].split(",")[0].replaceAll("^\"|\"$|\\\"", "");
-
-//                finalResult.add(tt);
-                /*for (String g : finalResult)
+                catch (JsonProcessingException e)
                 {
-                    if (g.equals("pending") || g.equals("failed") || g.equals("expired")) {
-                        System.out.println("ACTION FAILED AFTER 30 SECONDS");
-                    } else if (g.equals("completed"))
-                    {
-
-                            for(int i=0;i<z.size();i++ ) {
-                                po.setQuantity(z.get(i).getQuantity());
-                                po.setPrice(z.get(i).getPrice());
-                                po.setImage(z.get(i).getImage());
-                                po.setDescription(z.get(i).getDescription());
-                                po.setName(z.get(i).getName());
-                                po.setBought(true);
-                                po.setUser_id(user.get().getId());
-                                purchaseObjectRepo.save(po);
-                            System.out.println("ACTION COMPLETED AFTER 30 SECONDS");
-                        }
-                    }
-                }*/
+                    throw new RuntimeException(e);
+                }
 
             }
+
         };
-        long delay = 70 * 1000; //70 seconds in milliseconds
+        long delay = 70 * 1000; //20 seconds in milliseconds
         timer.schedule(task, delay);
+
         // Return response body
 
-        return map;
+        return new ResponseEntity<>("PLEASE VALIDATE ON YOUR PHONE",HttpStatus.CREATED);
     }
     return new ResponseEntity<>("Please login",HttpStatus.UNAUTHORIZED);
 }
