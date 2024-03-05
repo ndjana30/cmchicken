@@ -149,7 +149,6 @@ public class PublicController {
                             System.out.println("NO PRODUCTS");
                         }
                         else {
-
                                 for (int i = 0; i < z.size(); i++) {
                                     Purchaseobject po = new Purchaseobject();
                                     po.setId(i+1);
@@ -162,20 +161,10 @@ public class PublicController {
                                     po.setUser_id(user.get().getId());
                                     y.add(po);
                                 }
-
                             System.out.println(y);
-                                purchaseObjectRepo.saveAll(y);
-                            Timer timer2 = new Timer();
-                            TimerTask timerTask = new TimerTask() {
-                                @Override
-                                public void run() {
-                                    y.clear();
-                                    z.clear();
-                                }
-                            };
-                            long delay2 = 2 * 1000;
-                            timer2.schedule(timerTask,delay2);
-
+                            purchaseObjectRepo.saveAll(y);
+                            z.clear();
+                            y.clear();
                         }
                     }
                 }
