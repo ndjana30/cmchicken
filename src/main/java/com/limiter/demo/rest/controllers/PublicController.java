@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.limiter.demo.models.Product;
 import com.limiter.demo.models.Purchaseobject;
+import com.limiter.demo.models.TemporaryObject;
 import com.limiter.demo.models.UserEntity;
 import com.limiter.demo.payment.Code;
 import com.limiter.demo.payment.PaymentRequest;
@@ -14,6 +15,7 @@ import com.limiter.demo.payment.PaymentResponse;
 import com.limiter.demo.payment.PaymentService;
 import com.limiter.demo.repositories.ProductRepository;
 import com.limiter.demo.repositories.PurchaseObjectRepo;
+import com.limiter.demo.repositories.TemporaryObjectRepo;
 import com.limiter.demo.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +48,8 @@ public class PublicController {
     UserRepository userRepository;
     @Autowired
     PurchaseObjectRepo purchaseObjectRepo;
+    @Autowired
+    TemporaryObjectRepo temporaryObjectRepo;
     Code c1 = new Code();
 
     @GetMapping("product/all")
@@ -63,9 +67,21 @@ public class PublicController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         List<Double> sums = new ArrayList<>();
-        z.addAll(products);
+//        z.addAll(products);
+//        TemporaryObject to = new TemporaryObject();
+        for(Product p: products)
+        {
+            TemporaryObject to = new TemporaryObject();
+            to.setId(p.getId());
+            to.setName(p.getName());
+            to.setDescription(p.getDescription());
+            to.setPrice(p.getPrice());
+            to.setQuantity(p.getQuantity());
+            temporaryObjectRepo.save(to);
+        }
+        System.out.println(temporaryObjectRepo.findAll());
 //        if (client.isPresent()) {
-        try {
+        /*try {
             for (Product p : products) {
                 sums.add(p.getPrice() * p.getQuantity());
             }
@@ -78,7 +94,8 @@ public class PublicController {
         catch (Exception ex)
         {
             return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
-        }
+        }*/
+        return temporaryObjectRepo.findAll();
     }
 
 @PostMapping("product/buy")
@@ -145,30 +162,23 @@ public class PublicController {
 
                     }
                     else {
-                        if(z.isEmpty())
-                        {
-                            System.out.println("NO PRODUCTS");
-                        }
-                        else {
-                                for (int i = 0; i < z.size(); i++) {
+
+                                for (TemporaryObject t: temporaryObjectRepo.findAll()) {
+
                                     Purchaseobject po = new Purchaseobject();
-                                    po.setId(i+1);
-                                    po.setQuantity(z.get(i).getQuantity());
-                                    po.setPrice(z.get(i).getPrice());
-                                    po.setImage(z.get(i).getImage());
-                                    po.setDescription(z.get(i).getDescription());
-                                    po.setName(z.get(i).getName());
+                                    po.setName(t.getName());
                                     po.setBought(true);
                                     po.setUser_id(user.get().getId());
-                                    y.add(po);
+                                    po.setDescription(t.getDescription());
+                                    po.setQuantity(t.getQuantity());
+                                    po.setBought(true);
+                                    po.setPrice(t.getPrice());
+                                   purchaseObjectRepo.save(po);
                                 }
-                            System.out.println(y);
-                            purchaseObjectRepo.saveAll(y);
-                            y.clear();
-                            z.clear();
-
+                            System.out.println(temporaryObjectRepo.findAll());
+                            temporaryObjectRepo.deleteAll();
                         }
-                    }
+
                 }
                 catch (JsonProcessingException e)
                 {
