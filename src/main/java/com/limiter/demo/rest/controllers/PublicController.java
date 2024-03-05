@@ -129,6 +129,7 @@ public class PublicController {
             @Override
             public void run() {
 
+                y.clear();
 
 //                String[] typ = getPaymentStatus().split(":");
                 String jsonString=getPaymentStatus();
@@ -163,8 +164,9 @@ public class PublicController {
                                 }
                             System.out.println(y);
                             purchaseObjectRepo.saveAll(y);
-                            z.clear();
                             y.clear();
+                            z.clear();
+
                         }
                     }
                 }
