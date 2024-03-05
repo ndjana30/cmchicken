@@ -228,7 +228,7 @@ public String getPaymentStatus() {
 
         // Prepare request body
         ObjectMapper mapper = new ObjectMapper();
-        String jsonBody = "{ \"channel\": \"cm.mobile\", \"data\" : { \"phone\": \"+237695367034\" } }";
+        String jsonBody = "{ \"channel\": \"cm.mobile\", \"data\" : { \"phone\": \"+237699189765\" } }";
 //        String jsonBody = "{ \"channel\" : \"cm.orange\" , data : { phone: +237699189765 } }";
 
         // Create request entity
