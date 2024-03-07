@@ -59,29 +59,26 @@ public class PublicController {
 
     private static final String API_URL = "https://api.notchpay.co/payments/initialize";
     private static final String VERIFY_URL = "https://api.notchpay.co/payments/";
-    public List<Product> z = new ArrayList<>();
-    public List<Purchaseobject> y = new ArrayList<>();
 
     @PostMapping("products/confirm")
     public Object confirmProducts(@RequestBody List<Product> products) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         List<Double> sums = new ArrayList<>();
-//        z.addAll(products);
-//        TemporaryObject to = new TemporaryObject();
-        for(Product p: products)
-        {
-            TemporaryObject to = new TemporaryObject();
-            to.setId(p.getId());
-            to.setName(p.getName());
-            to.setDescription(p.getDescription());
-            to.setPrice(p.getPrice());
-            to.setQuantity(p.getQuantity());
-            temporaryObjectRepo.save(to);
-        }
-        System.out.println(temporaryObjectRepo.findAll());
-//        if (client.isPresent()) {
-        /*try {
+
+
+        try {
+            for(Product p: products)
+            {
+                TemporaryObject to = new TemporaryObject();
+                to.setId(p.getId());
+                to.setName(p.getName());
+                to.setDescription(p.getDescription());
+                to.setPrice(p.getPrice());
+                to.setQuantity(p.getQuantity());
+                temporaryObjectRepo.save(to);
+            }
+            System.out.println(temporaryObjectRepo.findAll());
             for (Product p : products) {
                 sums.add(p.getPrice() * p.getQuantity());
             }
@@ -94,8 +91,7 @@ public class PublicController {
         catch (Exception ex)
         {
             return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
-        }*/
-        return temporaryObjectRepo.findAll();
+        }
     }
 
 @PostMapping("product/buy")
@@ -108,8 +104,8 @@ public class PublicController {
 {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Optional<UserEntity> user = userRepository.findByUsername(auth.getName());
-    if(user.isPresent()) {
-        List<String> finalResult = new ArrayList<>();
+    if(user.isPresent())
+    {
         RestTemplate restTemplate = new RestTemplate();
 
         // Prepare headers
@@ -146,9 +142,7 @@ public class PublicController {
             @Override
             public void run() {
 
-                y.clear();
 
-//                String[] typ = getPaymentStatus().split(":");
                 String jsonString=getPaymentStatus();
                 ObjectMapper Mapper = new ObjectMapper();
                 try {
