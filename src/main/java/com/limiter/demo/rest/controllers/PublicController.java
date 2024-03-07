@@ -1,5 +1,5 @@
 package com.limiter.demo.rest.controllers;
-
+import org.json.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -100,8 +100,7 @@ public class PublicController {
                                  @RequestParam("amount") int amount,
                                  @RequestParam("phone") String phone,
                                  @RequestParam("reference") String reference,
-                                 @RequestParam("description") String description)
-{
+                                 @RequestParam("description") String description) throws JsonProcessingException {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Optional<UserEntity> user = userRepository.findByUsername(auth.getName());
     if(user.isPresent())
@@ -129,13 +128,20 @@ public class PublicController {
         // Send POST request
         ResponseEntity<String> response = restTemplate.postForEntity(API_URL, requestEntity, String.class);
         Map<Object, Object> map = new HashMap<>();
-        String[] elements = response.getBody().split(":");
-        String[] value = elements[25].split(",");
-        String code = value[0].replaceAll("^\"|\"$|\\\"", "");
-        c1.setContent(code);
-        c1.setReference(reference);
+        ObjectMapper mapper = new ObjectMapper();
 
-        map.put(getPaymentStatus(), updatePayment(c1.getContent()));
+        JsonNode root = mapper.readTree(response.getBody());
+        JsonNode referenceNode = root.path("transaction").path("reference");
+        String ref = referenceNode.asText();
+
+       /* String[] elements = response.getBody().split(":");
+        String[] value = elements[25].split(",");
+        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*/
+        c1.setContent(ref);
+        c1.setReference(ref);
+
+
+        map.put(getPaymentStatus(), updatePayment(c1.getContent(),phone));
 
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
@@ -152,7 +158,7 @@ public class PublicController {
                     System.out.println("the status is: "+statusValue);
                     if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
                     {
-                        System.out.println("ACTION FAILED AFTER 50 SECONDS");
+                        System.out.println("ACTION FAILED AFTER 70 SECONDS");
 
                     }
                     else {
@@ -210,27 +216,46 @@ public String getPaymentStatus() {
     // Return response body
     return response.getBody();
 }
-    public String updatePayment(String reference) {
-        RestTemplate restTemplate = new RestTemplate();
+    public String updatePayment(String reference,String phone) {
 
-        // Prepare headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("Authorization", notchPayApiKey);
+        try {
+            RestTemplate restTemplate = new RestTemplate();
 
-        // Prepare request body
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonBody = "{ \"channel\": \"cm.mobile\", \"data\" : { \"phone\": \"+237699189765\" } }";
+            // Prepare headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+            headers.set("Authorization", notchPayApiKey);
+
+            // Prepare request body
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonBody = "{ \"channel\": \"cm.mobile\", \"data\" : { \"phone\": \"+237699189765\" } }";
+            // Parse the JSON string into a JSONObject
+            JSONObject jsonObject = new JSONObject(jsonBody);
+
+            // Navigate to the 'data' object and then to the 'phone' field
+            JSONObject dataObject = jsonObject.getJSONObject("data");
+
+            // Update the 'phone' field with the new phone number
+            dataObject.put("phone", phone);
+
+            // Convert the modified JSONObject back to a string
+            String updatedJsonBody = jsonObject.toString();
+
+            System.out.println("Updated JSON: " + updatedJsonBody);
+            HttpEntity<String> requestEntity = new HttpEntity<>(updatedJsonBody, headers);
+
+            // Send PUT request
+            ResponseEntity<String> response = restTemplate.exchange(VERIFY_URL+reference, HttpMethod.PUT, requestEntity, String.class);
+            // Return response body
+            return response.getBody();
+        } catch (Exception e) {
+           return  e.getMessage()+e.getLocalizedMessage();
+        }
 //        String jsonBody = "{ \"channel\" : \"cm.orange\" , data : { phone: +237699189765 } }";
 
         // Create request entity
-        HttpEntity<String> requestEntity = new HttpEntity<>(jsonBody, headers);
 
-        // Send PUT request
-        ResponseEntity<String> response = restTemplate.exchange(VERIFY_URL+reference, HttpMethod.PUT, requestEntity, String.class);
-        // Return response body
-        return response.getBody();
     }
 
 
