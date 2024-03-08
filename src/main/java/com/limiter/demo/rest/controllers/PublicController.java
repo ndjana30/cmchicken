@@ -17,6 +17,7 @@ import com.limiter.demo.repositories.ProductRepository;
 import com.limiter.demo.repositories.PurchaseObjectRepo;
 import com.limiter.demo.repositories.TemporaryObjectRepo;
 import com.limiter.demo.repositories.UserRepository;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -27,8 +28,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
-import java.util.logging.Logger;
 
+import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("api/public")
 @CrossOrigin(origins = "*")
@@ -59,7 +60,7 @@ public class PublicController {
 
     private static final String API_URL = "https://api.notchpay.co/payments/initialize";
     private static final String VERIFY_URL = "https://api.notchpay.co/payments/";
-
+    private static final Logger logger = LoggerFactory.getLogger(PublicController.class);
     @PostMapping("products/confirm")
     public Object confirmProducts(@RequestBody List<Product> products) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -85,16 +86,18 @@ public class PublicController {
             double sum = 0;
             for (int i = 0; i < sums.size(); i++) {
                 sum = sums.get(i) + sum;
+
             }
             return new ResponseEntity<>("SUM IS: " + sum, HttpStatus.OK);
         }
         catch (Exception ex)
         {
+            logger.info("THE ERROR IS: "+ex.getMessage()+"\t"+ex.getLocalizedMessage());
             return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
         }
     }
 
-@PostMapping("product/buy")
+/*@PostMapping("product/buy")
     public Object sendSomething( @RequestParam("email") String email,
                                  @RequestParam("currency") String currency,
                                  @RequestParam("amount") int amount,
@@ -134,9 +137,9 @@ public class PublicController {
         JsonNode referenceNode = root.path("transaction").path("reference");
         String ref = referenceNode.asText();
 
-       /* String[] elements = response.getBody().split(":");
+       *//* String[] elements = response.getBody().split(":");
         String[] value = elements[25].split(",");
-        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*/
+        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*//*
         c1.setContent(ref);
         c1.setReference(ref);
 
@@ -196,7 +199,7 @@ public class PublicController {
         return new ResponseEntity<>("PLEASE VALIDATE ON YOUR PHONE",HttpStatus.CREATED);
     }
     return new ResponseEntity<>("Please login",HttpStatus.UNAUTHORIZED);
-}
+}*/
 
 @GetMapping("transaction/verify")
 public String getPaymentStatus() {
@@ -213,6 +216,7 @@ public String getPaymentStatus() {
     // Send GET request
     ResponseEntity<String> response = restTemplate.exchange(VERIFY_URL+c1.getContent(), HttpMethod.GET, requestEntity, String.class);
     System.out.println(VERIFY_URL+c1.getContent());
+
     // Return response body
     return response.getBody();
 }
@@ -258,25 +262,130 @@ public String getPaymentStatus() {
 
     }
 
+@PostMapping("product/buy")
+public Object doAll(@RequestBody List<Product> products,
+                    @RequestParam("email") String email,
+                    @RequestParam("currency") String currency,
+                    @RequestParam("amount") int amount,
+                    @RequestParam("phone") String phone,
+                    @RequestParam("reference") String reference,
+                    @RequestParam("description") String description) throws JsonProcessingException
+{
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Optional<UserEntity> user = userRepository.findByUsername(auth.getName());
+    List<Double> sums = new ArrayList<>();
 
-/*
-* @GetMapping("transaction/verify")
-public String getPaymentStatus(String reference) {
-    RestTemplate restTemplate = new RestTemplate();
+        for (Product p : products) {
+            sums.add(p.getPrice() * p.getQuantity());
+        }
+        double sum = 0;
+        for (int i = 0; i < sums.size(); i++) {
+            sum = sums.get(i) + sum;
+            logger.info("THE SUM IS: "+sum);
+        }
+    System.out.println("SUM IS: " + sum);
+//        return new ResponseEntity<>("SUM IS: " + sum, HttpStatus.OK);
+    if(user.isPresent())
+    {
+        RestTemplate restTemplate = new RestTemplate();
 
-    // Prepare headers
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("Authorization", notchPayApiKey);
-    headers.set("Accept", "application/json");
+        // Prepare headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Authorization", notchPayApiKey);
+        headers.set("Accept", "application/json");
 
-    // Create request entity
-    HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+        // Prepare form data
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("email", email);
+        formData.add("currency", currency);
+        formData.add("amount", String.valueOf(amount));
+        formData.add("phone", phone);
+        formData.add("reference", reference);
+        formData.add("description", description);
 
-    // Send GET request
-    ResponseEntity<String> response = restTemplate.exchange(VERIFY_URL, HttpMethod.GET, requestEntity, String.class);
+        // Create request entity
+        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
 
-    // Return response body
-    return response.getBody();
-}*/
+        // Send POST request
+        ResponseEntity<String> response = restTemplate.postForEntity(API_URL, requestEntity, String.class);
+        Map<Object, Object> map = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        JsonNode root = mapper.readTree(response.getBody());
+        JsonNode referenceNode = root.path("transaction").path("reference");
+        String ref = referenceNode.asText();
+
+       /* String[] elements = response.getBody().split(":");
+        String[] value = elements[25].split(",");
+        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*/
+        c1.setContent(ref);
+        c1.setReference(ref);
+        logger.info("THE API REFERENCE: "+c1.getContent());
+
+
+        map.put(getPaymentStatus(), updatePayment(c1.getContent(),phone));
+
+        Timer timer = new Timer();
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+
+
+                String jsonString=getPaymentStatus();
+                ObjectMapper Mapper = new ObjectMapper();
+                try {
+                    JsonNode rootNode = Mapper.readTree(jsonString);
+                    JsonNode statusNode = rootNode.path("transaction").path("status");
+                    String statusValue = statusNode.asText();
+                    System.out.println("the status is: "+statusValue);
+                    if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
+                    {
+                        // I have to produce code to cancel the action
+                        System.out.println("ACTION FAILED AFTER 70 SECONDS");
+
+
+                    }
+                    else {
+
+                        for (Product  t: products) {
+
+                            Purchaseobject po = new Purchaseobject();
+                            po.setName(t.getName());
+                            po.setBought(true);
+                            po.setUser_id(user.get().getId());
+                            po.setDescription(t.getDescription());
+                            po.setQuantity(t.getQuantity());
+                            po.setBought(true);
+                            po.setAddedDate(new Date());
+                            po.setPrice(t.getPrice());
+                            purchaseObjectRepo.save(po);
+                            logger.info("Object saved to database");
+                        }
+                        System.out.println(products);
+
+                    }
+
+                }
+                catch (JsonProcessingException e)
+                {
+                    throw new RuntimeException(e);
+                }
+
+            }
+
+        };
+        long delay = 70 * 1000;
+        logger.info("70 SECONDS ALREADY");//20 seconds in milliseconds
+        timer.schedule(task, delay);
+
+        // Return response body
+
+        return new ResponseEntity<>("PLEASE VALIDATE ON YOUR PHONE",HttpStatus.CREATED);
+    }
+    return new ResponseEntity<>("Please login",HttpStatus.UNAUTHORIZED);
+
+    }
 
 }
+
