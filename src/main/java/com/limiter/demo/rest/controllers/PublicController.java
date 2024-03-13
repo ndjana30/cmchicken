@@ -354,7 +354,11 @@ public Object doAll(@RequestBody List<Product> products,
             public void run() {
 
 
-                doTheRest(products,user);
+                try {
+                    doTheRest(products,user);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
 
             }
 
@@ -371,11 +375,11 @@ public Object doAll(@RequestBody List<Product> products,
 
     }
 
-    public Object doTheRest(List<Product> items,Optional<UserEntity> user)
+    public Object doTheRest(List<Product> items,Optional<UserEntity> user) throws JsonProcessingException
     {
         String jsonString=getPaymentStatus();
         ObjectMapper Mapper = new ObjectMapper();
-        try {
+
             JsonNode rootNode = Mapper.readTree(jsonString);
             JsonNode statusNode = rootNode.path("transaction").path("status");
             String statusValue = statusNode.asText();
@@ -385,7 +389,7 @@ public Object doAll(@RequestBody List<Product> products,
                 // I have to produce code to cancel the action
                 cancelPayment();
                 System.out.println("ACTION FAILED AFTER 70 SECONDS");
-
+                return new ResponseEntity<>("Payment was not successful",HttpStatus.BAD_GATEWAY);
 
             }
             else {
@@ -410,12 +414,6 @@ public Object doAll(@RequestBody List<Product> products,
 
             }
 
-        }
-        catch (JsonProcessingException e)
-        {
-            return new ResponseEntity<>("COULD NOT TERMINATE PAYMENT",HttpStatus.OK);
-        }
-        return null;
     }
 }
 
