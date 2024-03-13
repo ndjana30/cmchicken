@@ -409,9 +409,7 @@ public Object doAll(@RequestBody List<Product> products,
                     logger.info("Object saved to database");
                 }
                 System.out.println(items);
-
-                        return new ResponseEntity<>("Payment successfull",HttpStatus.OK);
-
+                        return new ResponseEntity<>("Payment successful",HttpStatus.OK);
             }
 
     }
