@@ -262,6 +262,28 @@ public String getPaymentStatus() {
 
     }
 
+    public String cancelPayment()
+    {
+        RestTemplate restTemplate = new RestTemplate();
+
+        // Prepare headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", notchPayApiKey);
+        headers.set("Accept", "application/json");
+
+        // Create request entity
+        HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+
+        // Send GET request
+        ResponseEntity<String> response = restTemplate.exchange(VERIFY_URL+c1.getContent(), HttpMethod.DELETE, requestEntity, String.class);
+        System.out.println("URL IS: "+VERIFY_URL+c1.getContent());
+
+        // Return response body
+        return response.getBody();
+
+
+    }
+
 @PostMapping("product/buy")
 public Object doAll(@RequestBody List<Product> products,
                     @RequestParam("email") String email,
@@ -332,51 +354,13 @@ public Object doAll(@RequestBody List<Product> products,
             public void run() {
 
 
-                String jsonString=getPaymentStatus();
-                ObjectMapper Mapper = new ObjectMapper();
-                try {
-                    JsonNode rootNode = Mapper.readTree(jsonString);
-                    JsonNode statusNode = rootNode.path("transaction").path("status");
-                    String statusValue = statusNode.asText();
-                    System.out.println("the status is: "+statusValue);
-                    if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
-                    {
-                        // I have to produce code to cancel the action
-                        System.out.println("ACTION FAILED AFTER 70 SECONDS");
-
-
-                    }
-                    else {
-
-                        for (Product  t: products) {
-
-                            Purchaseobject po = new Purchaseobject();
-                            po.setName(t.getName());
-                            po.setBought(true);
-                            po.setUser_id(user.get().getId());
-                            po.setDescription(t.getDescription());
-                            po.setQuantity(t.getQuantity());
-                            po.setBought(true);
-                            po.setAddedDate(new Date());
-                            po.setPrice(t.getPrice());
-                            purchaseObjectRepo.save(po);
-                            logger.info("Object saved to database");
-                        }
-                        System.out.println(products);
-
-                    }
-
-                }
-                catch (JsonProcessingException e)
-                {
-                    throw new RuntimeException(e);
-                }
+                doTheRest(products,user);
 
             }
 
         };
         long delay = 70 * 1000;
-        logger.info("70 SECONDS ALREADY");//20 seconds in milliseconds
+        logger.info("ACTION WILL COMPLETE IN 70 SECONDS PLEASE");//20 seconds in milliseconds
         timer.schedule(task, delay);
 
         // Return response body
@@ -387,5 +371,51 @@ public Object doAll(@RequestBody List<Product> products,
 
     }
 
+    public Object doTheRest(List<Product> items,Optional<UserEntity> user)
+    {
+        String jsonString=getPaymentStatus();
+        ObjectMapper Mapper = new ObjectMapper();
+        try {
+            JsonNode rootNode = Mapper.readTree(jsonString);
+            JsonNode statusNode = rootNode.path("transaction").path("status");
+            String statusValue = statusNode.asText();
+            System.out.println("the status is: "+statusValue);
+            if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
+            {
+                // I have to produce code to cancel the action
+                cancelPayment();
+                System.out.println("ACTION FAILED AFTER 70 SECONDS");
+
+
+            }
+            else {
+
+                for (Product  t: items) {
+
+                    Purchaseobject po = new Purchaseobject();
+                    po.setName(t.getName());
+                    po.setBought(true);
+                    po.setUser_id(user.get().getId());
+                    po.setDescription(t.getDescription());
+                    po.setQuantity(t.getQuantity());
+                    po.setBought(true);
+                    po.setAddedDate(new Date());
+                    po.setPrice(t.getPrice());
+                    purchaseObjectRepo.save(po);
+                    logger.info("Object saved to database");
+                }
+                System.out.println(items);
+
+                        return new ResponseEntity<>("Payment successfull",HttpStatus.OK);
+
+            }
+
+        }
+        catch (JsonProcessingException e)
+        {
+            return new ResponseEntity<>("COULD NOT TERMINATE PAYMENT",HttpStatus.OK);
+        }
+        return null;
+    }
 }
 

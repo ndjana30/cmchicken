@@ -1,31 +1,35 @@
 package com.limiter.demo.api;
 
 import com.limiter.demo.models.Product;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Trials {
     public static void main(String[] args) {
-        List<String> p = new ArrayList<>();
+        List<Obj> p = new ArrayList<>();
         List<String> lm = new ArrayList<>();
-        p.add("bea");
-        p.add("leo");
-        p.add("dave");
-        p.add("arthur");
-        p.add("simon");
-        Obj o = new Obj();
-            for(int er=0;er<p.size();er++)
-            {
-                o.setName(p.get(er));
-                lm.add(o.getName());
-            }
+        p.add(new Obj("bea",25));
+        p.add(new Obj("leo",20));
 
-        System.out.println(lm);
+
+//         List<Obj> objects=  p.stream().filter(obj->
+//                   obj.getName().equals("dave"))
+//                   .collect(Collectors.toList());
+        Optional<Obj> objects = p.stream().max(Comparator.comparingInt(Obj::getAge));
+        System.out.println(objects.get());
+//         objects.forEach(System.out::println);
+//        System.out.println();
     }
 }
 @Data
+@AllArgsConstructor
 class Obj{
     String name;
+    int age;
 }
