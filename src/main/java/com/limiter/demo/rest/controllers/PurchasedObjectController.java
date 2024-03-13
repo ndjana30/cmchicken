@@ -25,7 +25,7 @@ public class PurchasedObjectController {
     private ProductRepository productRepository;
     @Autowired
     private UserRepository userRepository;
-    @PostMapping("products/{user_id}/all")
+    @GetMapping("products/{user_id}/all")
     public Object getUserProducts(@PathVariable long product_id)
     {
         Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
