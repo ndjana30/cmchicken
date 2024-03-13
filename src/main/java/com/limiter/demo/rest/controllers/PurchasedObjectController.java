@@ -25,36 +25,23 @@ public class PurchasedObjectController {
     private ProductRepository productRepository;
     @Autowired
     private UserRepository userRepository;
-    /*@PostMapping("product/{product_id}/purchase/{quantity}")
-    public Object addProduct(@PathVariable long product_id,@PathVariable int quantity)
+    @PostMapping("products/{user_id}/all")
+    public Object getUserProducts(@PathVariable long product_id)
     {
         Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         if(client.isPresent())
         {
-            long c_id = client.get().getId();
-            Optional<Product> product = productRepository.findById(product_id);
-            if(product.isPresent())
-            {
-                Purchaseobject p = new Purchaseobject();
-                p.setName(product.get().getName());
-                p.setImage(product.get().getImage());
-                p.setUser_id(c_id);
-                p.setPrice(product.get().getPrice());
-                p.setDescription(product.get().getDescription());
-                p.setAddedDate(new Date());
-                p.setBought(false);
-                p.setQuantity(quantity);
-                purchaseObjectRepo.save(p);
-                return new ResponseEntity<>("Product Added to cart", HttpStatus.CREATED);
+            if(client.get().getPurchaseobjectList().isEmpty()) {
+                return new ResponseEntity<>("NO ITEMS PURCHASED YET", HttpStatus.FOUND);
             }
-            else {
-                return new ResponseEntity<>("Product does not exist", HttpStatus.BAD_REQUEST);
+            else{
+                return new ResponseEntity<>(client.get().getPurchaseobjectList(), HttpStatus.FOUND);
             }
         }
         return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
     }
-*/
+
 
 
 }
