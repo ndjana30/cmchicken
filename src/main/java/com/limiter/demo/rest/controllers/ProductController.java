@@ -227,6 +227,7 @@ public class ProductController {
     public Object getCategoryProducts(@PathVariable long id)
 {
     try{
+
         Optional<Category> category = categoryRepository.findById(id);
         if(category.isPresent())
         {
