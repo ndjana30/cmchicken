@@ -223,6 +223,30 @@ public class ProductController {
    }
 
 }
+@GetMapping("category/{id}/products")
+    public Object getCategoryProducts(@PathVariable long id)
+{
+    try{
+        Optional<Category> category = categoryRepository.findById(id);
+        if(category.isPresent())
+        {
+            if(category.get().getProducts().isEmpty())
+            {
+                return new ResponseEntity<>("NO PRODUCTS FOUND",HttpStatus.OK);
+            }
+            else {
+                return new ResponseEntity<>(category.get().getProducts(),HttpStatus.OK);
+            }
+
+        }
+            return new ResponseEntity<>("CATEGORY DOES NOT EXIST",HttpStatus.BAD_REQUEST);
+
+    } catch(Exception e)
+    {
+        return new ResponseEntity<>("ERROR FETCHING PRODUCTS",HttpStatus.BAD_REQUEST);
+    }
+
+}
 
 
 }
