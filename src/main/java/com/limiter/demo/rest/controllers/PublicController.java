@@ -97,109 +97,7 @@ public class PublicController {
         }
     }
 
-/*@PostMapping("product/buy")
-    public Object sendSomething( @RequestParam("email") String email,
-                                 @RequestParam("currency") String currency,
-                                 @RequestParam("amount") int amount,
-                                 @RequestParam("phone") String phone,
-                                 @RequestParam("reference") String reference,
-                                 @RequestParam("description") String description) throws JsonProcessingException {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    Optional<UserEntity> user = userRepository.findByUsername(auth.getName());
-    if(user.isPresent())
-    {
-        RestTemplate restTemplate = new RestTemplate();
 
-        // Prepare headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Authorization", notchPayApiKey);
-        headers.set("Accept", "application/json");
-
-        // Prepare form data
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("email", email);
-        formData.add("currency", currency);
-        formData.add("amount", String.valueOf(amount));
-        formData.add("phone", phone);
-        formData.add("reference", reference);
-        formData.add("description", description);
-
-        // Create request entity
-        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
-
-        // Send POST request
-        ResponseEntity<String> response = restTemplate.postForEntity(API_URL, requestEntity, String.class);
-        Map<Object, Object> map = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-
-        JsonNode root = mapper.readTree(response.getBody());
-        JsonNode referenceNode = root.path("transaction").path("reference");
-        String ref = referenceNode.asText();
-
-       *//* String[] elements = response.getBody().split(":");
-        String[] value = elements[25].split(",");
-        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*//*
-        c1.setContent(ref);
-        c1.setReference(ref);
-
-
-        map.put(getPaymentStatus(), updatePayment(c1.getContent(),phone));
-
-        Timer timer = new Timer();
-        TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-
-
-                String jsonString=getPaymentStatus();
-                ObjectMapper Mapper = new ObjectMapper();
-                try {
-                    JsonNode rootNode = Mapper.readTree(jsonString);
-                    JsonNode statusNode = rootNode.path("transaction").path("status");
-                    String statusValue = statusNode.asText();
-                    System.out.println("the status is: "+statusValue);
-                    if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
-                    {
-                        System.out.println("ACTION FAILED AFTER 70 SECONDS");
-
-                    }
-                    else {
-
-                                for (TemporaryObject t: temporaryObjectRepo.findAll()) {
-
-                                    Purchaseobject po = new Purchaseobject();
-                                    po.setName(t.getName());
-                                    po.setBought(true);
-                                    po.setUser_id(user.get().getId());
-                                    po.setDescription(t.getDescription());
-                                    po.setQuantity(t.getQuantity());
-                                    po.setBought(true);
-                                    po.setPrice(t.getPrice());
-                                   purchaseObjectRepo.save(po);
-                                }
-                            System.out.println(temporaryObjectRepo.findAll());
-                            temporaryObjectRepo.deleteAll();
-                        }
-
-                }
-                catch (JsonProcessingException e)
-                {
-                    throw new RuntimeException(e);
-                }
-
-            }
-
-        };
-        long delay = 70 * 1000; //20 seconds in milliseconds
-        timer.schedule(task, delay);
-
-        // Return response body
-
-        return new ResponseEntity<>("PLEASE VALIDATE ON YOUR PHONE",HttpStatus.CREATED);
-    }
-    return new ResponseEntity<>("Please login",HttpStatus.UNAUTHORIZED);
-}*/
 
 @GetMapping("transaction/verify")
 public String getPaymentStatus() {
@@ -389,6 +287,7 @@ public Object doAll(@RequestBody List<Product> products,
                 // I have to produce code to cancel the action
                 cancelPayment();
                 System.out.println("ACTION FAILED AFTER 70 SECONDS");
+                logger.info("Payment was not successful");
                 return new ResponseEntity<>("Payment was not successful",HttpStatus.BAD_GATEWAY);
 
             }
@@ -409,6 +308,7 @@ public Object doAll(@RequestBody List<Product> products,
                     logger.info("Object saved to database");
                 }
                 System.out.println(items);
+                logger.info("Payment successful");
                         return new ResponseEntity<>("Payment successful",HttpStatus.OK);
             }
 

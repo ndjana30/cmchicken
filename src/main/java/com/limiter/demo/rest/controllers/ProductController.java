@@ -1,7 +1,9 @@
 package com.limiter.demo.rest.controllers;
 import com.limiter.demo.models.Availability;
+import com.limiter.demo.models.Category;
 import com.limiter.demo.models.Product;
 import com.limiter.demo.models.UserEntity;
+import com.limiter.demo.repositories.CategoryRepository;
 import com.limiter.demo.repositories.ProductRepository;
 import com.limiter.demo.repositories.PurchaseObjectRepo;
 import com.limiter.demo.repositories.UserRepository;
@@ -30,12 +32,14 @@ public class ProductController {
     private final UserRepository userRepository;
     private final PurchaseObjectRepo purchaseObjectRepo;
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+
     @Autowired
-    ProductController(UserRepository userRepository, PurchaseObjectRepo purchaseObjectRepo, ProductRepository productRepository)
-    {
-        this.userRepository=userRepository;
+    ProductController(UserRepository userRepository, PurchaseObjectRepo purchaseObjectRepo, ProductRepository productRepository, CategoryRepository categoryRepository) {
+        this.userRepository = userRepository;
         this.purchaseObjectRepo = purchaseObjectRepo;
-        this.productRepository=productRepository;
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     public byte[] compressImage(byte[] imageBytes, float compressionQuality, String format) throws IOException {
@@ -55,12 +59,13 @@ public class ProductController {
 
         return outputStream.toByteArray();
     }
+
     public byte[] resizeImage
             (
-            byte[] originalImage,
-            int targetWidth,
-            int targetHeight,
-            String format) throws Exception {
+                    byte[] originalImage,
+                    int targetWidth,
+                    int targetHeight,
+                    String format) throws Exception {
         /*BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
         BufferedImage resizedImage = ImageUtils.scale(image, targetWidth, targetHeight);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -68,11 +73,11 @@ public class ProductController {
         return outputStream.toByteArray();*/
         ByteArrayInputStream inputStream = new ByteArrayInputStream(originalImage);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-          Thumbnails.of(inputStream)
-                .size(targetWidth,targetHeight)
+        Thumbnails.of(inputStream)
+                .size(targetWidth, targetHeight)
                 .outputFormat(format)
                 .outputQuality(0.7f)
-                 .toOutputStream(outputStream);
+                .toOutputStream(outputStream);
         return outputStream.toByteArray();
     }
 
@@ -82,13 +87,15 @@ public class ProductController {
              @RequestParam("name") String name,
              @RequestParam("image") MultipartFile image,
              @RequestParam("price") double price,
-             @RequestParam("description") String description) throws Exception {
+             @RequestParam("description") String description,
+             @RequestParam("category_id") long cat_id) throws Exception {
         Product p = new Product();
         p.setAddedDate(new Date());
         p.setDescription(description);
         p.setQuantity(quantity);
         p.setPrice(Double.valueOf(price));
         p.setName(name);
+        p.setCategory_id(cat_id);
 
        /* if (image.isEmpty() || image == null)
         {
@@ -97,33 +104,27 @@ public class ProductController {
 
         if (image.getSize() > 2 * 1024 * 1024) {
             // Image size exceeds limit of 2MB
-                return new ResponseEntity<>("Image size cannot exceed 2MB", HttpStatus.BAD_REQUEST);
-            }
-        if(image.isEmpty() || image==null)
-        {
+            return new ResponseEntity<>("Image size cannot exceed 2MB", HttpStatus.BAD_REQUEST);
+        }
+        if (image.isEmpty() || image == null) {
             try {
                 p.setAddedDate(new Date());
                 p.setDescription(description);
                 p.setQuantity(quantity);
                 p.setPrice(Double.valueOf(price));
                 p.setName(name);
+                p.setCategory_id(cat_id);
                 productRepository.save(p);
                 return new ResponseEntity<>("Product created with no image", HttpStatus.CREATED);
+            } catch (Exception ex) {
+                return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
             }
-            catch (Exception ex)
-            {
-                return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
-            }
-        }
-
-         else if (image.getSize() < 2*1024*1024)
-        {
-            if(image.getContentType().equals("image/jpg") ||
+        } else if (image.getSize() < 2 * 1024 * 1024) {
+            if (image.getContentType().equals("image/jpg") ||
                     image.getContentType().equals("image/jpeg") ||
-            image.getContentType().equals("image/png"))
-            {
+                    image.getContentType().equals("image/png")) {
 //                p.setImage(compressImage(image.getBytes(),0.7f,image.getContentType().substring(6)));
-                p.setImage(resizeImage(compressImage(image.getBytes(),0.55f,image.getContentType().substring(6)),500,350,image.getContentType().substring(6)));
+                p.setImage(resizeImage(compressImage(image.getBytes(), 0.55f, image.getContentType().substring(6)), 500, 350, image.getContentType().substring(6)));
                 productRepository.save(p);
 
                 return new ResponseEntity<>("Product saved", HttpStatus.CREATED);
@@ -140,12 +141,10 @@ public class ProductController {
     public Object incrementProduct
             (@PathVariable int quantity,
              @PathVariable long id
-             )
-    {
+            ) {
         Optional<Product> product = productRepository.findById(id);
-        if(product.isPresent())
-        {
-            product.get().setQuantity(quantity+product.get().getQuantity());
+        if (product.isPresent()) {
+            product.get().setQuantity(quantity + product.get().getQuantity());
             productRepository.save(product.get());
             return new ResponseEntity<>("Product Quantity incremented", HttpStatus.OK);
         }
@@ -157,18 +156,13 @@ public class ProductController {
     public Object decrementProduct
             (@PathVariable int quantity,
              @PathVariable long id
-            )
-    {
+            ) {
         Optional<Product> product = productRepository.findById(id);
-        if(product.isPresent())
-        {
-            if(quantity > product.get().getQuantity())
-            {
-                return new ResponseEntity<>("CANNOT REMOVE MORE THAN PRESENT QUANTITY",HttpStatus.BAD_REQUEST);
-            }
-            else if(quantity <= product.get().getQuantity())
-            {
-                product.get().setQuantity(product.get().getQuantity()-quantity);
+        if (product.isPresent()) {
+            if (quantity > product.get().getQuantity()) {
+                return new ResponseEntity<>("CANNOT REMOVE MORE THAN PRESENT QUANTITY", HttpStatus.BAD_REQUEST);
+            } else if (quantity <= product.get().getQuantity()) {
+                product.get().setQuantity(product.get().getQuantity() - quantity);
                 productRepository.save(product.get());
                 return new ResponseEntity<>("Product Quantity decremented", HttpStatus.OK);
             }
@@ -185,19 +179,16 @@ public class ProductController {
                                 @RequestParam("quantity") int quantity,
                                 @RequestParam("price") double price,
                                 @RequestParam("image") MultipartFile image,
-                                @RequestParam("name") String name) throws IOException
-
-    {
+                                @RequestParam("name") String name) throws IOException {
         Optional<Product> product = productRepository.findById(id);
-        if(product.isPresent())
-        {
+        if (product.isPresent()) {
             product.get().setPrice(price);
             product.get().setDescription(description);
             product.get().setQuantity(quantity);
             product.get().setName(name);
             product.get().setImage(image.getBytes());
             productRepository.save(product.get());
-            return new ResponseEntity<>("Product "+product.get().getName()+ "updated", HttpStatus.OK);
+            return new ResponseEntity<>("Product " + product.get().getName() + "updated", HttpStatus.OK);
         }
         return new ResponseEntity<>("UNABLE TO FIND PRODUCT", HttpStatus.BAD_REQUEST);
 
@@ -209,16 +200,29 @@ public class ProductController {
 //
     {
         Optional<Product> product = productRepository.findById(id);
-        if(product.isPresent())
-        {
+        if (product.isPresent()) {
             productRepository.deleteById(id);
-            return new ResponseEntity<>("Product "+product.get().getName()+ "deleted", HttpStatus.OK);
+            return new ResponseEntity<>("Product " + product.get().getName() + "deleted", HttpStatus.OK);
         }
         return new ResponseEntity<>("UNABLE TO FIND PRODUCT, CANNOT DELETE IT", HttpStatus.BAD_REQUEST);
 
     }
 
+@PostMapping("category/create")
+    public Object createCategory(@RequestParam("name") String name)
+{
+    try {
+        Category category = new Category();
+        category.setName(name);
+        categoryRepository.save(category);
+        return new ResponseEntity<>("category\t"+name+"\tcreated",HttpStatus.OK);
+    }
+   catch(Exception exception)
+   {
+       return new ResponseEntity<>("could not create category",HttpStatus.BAD_REQUEST);
+   }
 
+}
 
 
 }

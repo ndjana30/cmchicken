@@ -24,5 +24,9 @@ public class Product implements Serializable {
     private String description;
     private Date addedDate;
     private int quantity;
+    @ManyToOne
+    @JoinColumn(name="category_id",insertable = false,updatable = false)
+    private Category category;
+    private long category_id;
 
 }
