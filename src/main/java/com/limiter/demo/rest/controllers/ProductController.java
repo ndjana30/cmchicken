@@ -12,6 +12,7 @@ import org.apache.tomcat.util.http.fileupload.impl.SizeLimitExceededException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.*;
@@ -19,9 +20,9 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.apache.commons.imaging.*;
 
 @RestController
@@ -40,6 +41,7 @@ public class ProductController {
         this.purchaseObjectRepo = purchaseObjectRepo;
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+
     }
 
     public byte[] compressImage(byte[] imageBytes, float compressionQuality, String format) throws IOException {
@@ -224,10 +226,9 @@ public class ProductController {
 
 }
 @GetMapping("category/{id}/products")
+@Transactional
     public Object getCategoryProducts(@PathVariable long id)
 {
-    try{
-
         Optional<Category> category = categoryRepository.findById(id);
         if(category.isPresent())
         {
@@ -243,17 +244,12 @@ public class ProductController {
             return new ResponseEntity<>("CATEGORY DOES NOT EXIST",HttpStatus.BAD_REQUEST);
         }
 
-
-    } catch(Exception e)
-    {
-        return new ResponseEntity<>("ERROR FETCHING PRODUCTS",HttpStatus.BAD_REQUEST);
-    }
-
 }
 
     @GetMapping("categories/all")
     public Object getCategories()
     {
-        return categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAll().stream().collect(Collectors.toList());
+        return categories;
     }
 }
