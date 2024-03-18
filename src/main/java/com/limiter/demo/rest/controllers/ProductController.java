@@ -239,8 +239,10 @@ public class ProductController {
                 return new ResponseEntity<>(category.get().getProducts(),HttpStatus.OK);
             }
 
-        }
+        } else {
             return new ResponseEntity<>("CATEGORY DOES NOT EXIST",HttpStatus.BAD_REQUEST);
+        }
+
 
     } catch(Exception e)
     {
@@ -249,5 +251,9 @@ public class ProductController {
 
 }
 
-
+    @GetMapping("categories/all")
+    public Object getCategories()
+    {
+        return categoryRepository.findAll();
+    }
 }
