@@ -232,13 +232,8 @@ public class ProductController {
         Optional<Category> category = categoryRepository.findById(id);
         if(category.isPresent())
         {
-            if(category.get().getProducts().isEmpty())
-            {
-                return new ResponseEntity<>("NO PRODUCTS FOUND",HttpStatus.OK);
-            }
-            else {
                 return new ResponseEntity<>(category.get().getProducts(),HttpStatus.OK);
-            }
+
 
         } else {
             return new ResponseEntity<>("CATEGORY DOES NOT EXIST",HttpStatus.BAD_REQUEST);
