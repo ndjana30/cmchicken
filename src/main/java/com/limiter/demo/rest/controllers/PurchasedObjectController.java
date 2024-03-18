@@ -25,24 +25,23 @@ public class PurchasedObjectController {
     private ProductRepository productRepository;
     @Autowired
     private UserRepository userRepository;
-    @GetMapping("products/{user_id}/all")
-    public Object getUserProducts(@PathVariable long user_id)
+    @GetMapping("products/all")
+    public Object getUserProducts()
     {
         Authentication auth  = SecurityContextHolder.getContext().getAuthentication();
         Optional<UserEntity> client = userRepository.findByUsername(auth.getName());
         if(client.isPresent())
         {
-            if (client.get().getId() == user_id)
-            {
-
                 if (client.get().getPurchaseobjectList().isEmpty()) {
-                    return new ResponseEntity<>("NO ITEMS PURCHASED YET", HttpStatus.FOUND);
-                } else {
+                    return new ResponseEntity<>("NO ITEMS PURCHASED YET", HttpStatus.EXPECTATION_FAILED);
+                }
+                else {
                     return new ResponseEntity<>(client.get().getPurchaseobjectList(), HttpStatus.FOUND);
                 }
-            }
         }
-        return new ResponseEntity<>("Please Log IN", HttpStatus.UNAUTHORIZED);
+        else{
+            return new ResponseEntity<>("PLEASE LOGIN", HttpStatus.UNAUTHORIZED);
+        }
     }
 
 
