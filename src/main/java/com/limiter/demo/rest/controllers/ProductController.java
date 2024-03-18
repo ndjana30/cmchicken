@@ -232,7 +232,7 @@ public class ProductController {
         Optional<Category> category = categoryRepository.findById(id);
         if(category.isPresent())
         {
-                return new ResponseEntity<>(category.get().getProducts(),HttpStatus.OK);
+                return new ResponseEntity<>(category.get().getProducts().stream().collect(Collectors.toList()), HttpStatus.OK);
 
 
         } else {
