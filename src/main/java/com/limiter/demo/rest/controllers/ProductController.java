@@ -249,5 +249,9 @@ public class ProductController {
 
 }
 
-
+    @GetMapping("categories/all")
+    public Object getCategories()
+    {
+        return categoryRepository.findAll();
+    }
 }
