@@ -229,7 +229,7 @@ public class ProductController {
         Optional<Category> category = categoryRepository.findById(id);
         if(category.isPresent())
         {
-                return new ResponseEntity<>(category.get().getProducts().stream().collect(Collectors.toList()), HttpStatus.OK);
+                return new ResponseEntity<>(category.get().getProducts().parallelStream().collect(Collectors.toList()), HttpStatus.OK);
 
 
         } else {
@@ -241,7 +241,9 @@ public class ProductController {
     @GetMapping("categories/all")
     public Object getCategories()
     {
-        List<Category> categories = categoryRepository.findAll().stream().collect(Collectors.toList());
-        return categories;
+        return  categoryRepository.findAll().parallelStream().collect(Collectors.toList());
+
+
+
     }
 }
