@@ -18,7 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -181,7 +181,7 @@ public Object getCurrentUser()
        }
         return new ResponseEntity<>("User not found",HttpStatus.BAD_REQUEST);
     }
-    @PutMapping("/employee/{id}/update")
+    @PutMapping("employee/{id}/update")
     public ResponseEntity<Object> updateEmployee(@PathVariable long id, @RequestBody UserEntity user)
     {
         
@@ -194,6 +194,23 @@ public Object getCurrentUser()
             return new ResponseEntity<>("User modified", HttpStatus.ACCEPTED);
         }
         return new ResponseEntity<>("User not found", HttpStatus.BAD_REQUEST);
+    }
+
+    @PutMapping("user/credentials/reset")
+    public ResponseEntity<Object> resetCredentials(@RequestBody RegisterDto registerDto)
+    {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<UserEntity> connectedUser = userRepository.findByUsername(authentication.getName());
+        if(connectedUser.isPresent())
+        {
+            connectedUser.get().setPassword(passwordEncoder.encode(registerDto.getPassword()));
+            connectedUser.get().setUsername(registerDto.getUsername());
+            userRepository.save(connectedUser.get());
+            return new ResponseEntity<>("CREDENTIALS SET WITH SUCCESS",HttpStatus.OK);
+        }
+        else{
+            return new ResponseEntity<>("PLEASE LOGIN",HttpStatus.UNAUTHORIZED);
+        }
     }
 
 

@@ -30,15 +30,12 @@ import org.apache.commons.imaging.*;
 @CrossOrigin(origins = "*")
 
 public class ProductController {
-    private final UserRepository userRepository;
-    private final PurchaseObjectRepo purchaseObjectRepo;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
     @Autowired
-    ProductController(UserRepository userRepository, PurchaseObjectRepo purchaseObjectRepo, ProductRepository productRepository, CategoryRepository categoryRepository) {
-        this.userRepository = userRepository;
-        this.purchaseObjectRepo = purchaseObjectRepo;
+    ProductController( ProductRepository productRepository, CategoryRepository categoryRepository) {
+
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
 
