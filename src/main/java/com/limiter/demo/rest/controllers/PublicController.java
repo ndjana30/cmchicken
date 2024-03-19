@@ -28,6 +28,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
 @RestController
@@ -55,7 +56,7 @@ public class PublicController {
 
     @GetMapping("product/all")
     public Object viewAllProducts() {
-        return new ResponseEntity<>(productRepository.findAll(), HttpStatus.OK);
+        return new ResponseEntity<>(productRepository.findAll().parallelStream().collect(Collectors.toList()), HttpStatus.OK);
     }
 
     private static final String API_URL = "https://api.notchpay.co/payments/initialize";
