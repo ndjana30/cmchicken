@@ -1,22 +1,17 @@
 package com.limiter.demo.rest.controllers;
+import com.limiter.demo.forms.CTA;
+import com.limiter.demo.models.*;
+import com.limiter.demo.repositories.*;
 import org.json.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.limiter.demo.models.Product;
-import com.limiter.demo.models.Purchaseobject;
-import com.limiter.demo.models.TemporaryObject;
-import com.limiter.demo.models.UserEntity;
 import com.limiter.demo.payment.Code;
 import com.limiter.demo.payment.PaymentRequest;
 import com.limiter.demo.payment.PaymentResponse;
 import com.limiter.demo.payment.PaymentService;
-import com.limiter.demo.repositories.ProductRepository;
-import com.limiter.demo.repositories.PurchaseObjectRepo;
-import com.limiter.demo.repositories.TemporaryObjectRepo;
-import com.limiter.demo.repositories.UserRepository;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,12 +33,17 @@ import org.slf4j.LoggerFactory;
 public class PublicController {
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private ReceiptRepository receiptRepository;
+    @Autowired
+    private CTARepository ctaRepository;
     @Value("${notchpay.api.url}")
     private String notchPayApiUrl;
 
     @Value("${notchpay.api.key}")
     private String notchPayApiKey;
-
+    @Autowired
+    private DeliveryRepository deliveryRepository;
     @Autowired
     private ProductRepository productRepository;
     @Autowired
@@ -274,6 +274,97 @@ public Object doAll(@RequestBody List<Product> products,
 
     }
 
+    @PostMapping("product/buy-with-delivery")
+    public Object doAllWithDelivery(@RequestBody List<Product> products,
+                        @RequestParam("email") String email,
+                        @RequestParam("currency") String currency,
+                        @RequestParam("amount") int amount,
+                        @RequestParam("phone") String phone,
+                        @RequestParam("reference") String reference,
+                        @RequestParam("description") String description,
+                        @RequestParam String destination) throws JsonProcessingException
+    {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Optional<UserEntity> user = userRepository.findByUsername(auth.getName());
+        List<Double> sums = new ArrayList<>();
+
+        for (Product p : products) {
+            sums.add(p.getPrice() * p.getQuantity());
+        }
+        double sum = 0;
+        for (int i = 0; i < sums.size(); i++) {
+            sum = sums.get(i) + sum;
+            logger.info("THE SUM IS: "+sum);
+        }
+        System.out.println("SUM IS: " + sum);
+//        return new ResponseEntity<>("SUM IS: " + sum, HttpStatus.OK);
+        if(user.isPresent())
+        {
+            RestTemplate restTemplate = new RestTemplate();
+
+            // Prepare headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("Authorization", notchPayApiKey);
+            headers.set("Accept", "application/json");
+
+            // Prepare form data
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            formData.add("email", email);
+            formData.add("currency", currency);
+            formData.add("amount", String.valueOf(amount));
+            formData.add("phone", phone);
+            formData.add("reference", reference);
+            formData.add("description", description);
+
+            // Create request entity
+            HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
+
+            // Send POST request
+            ResponseEntity<String> response = restTemplate.postForEntity(API_URL, requestEntity, String.class);
+            Map<Object, Object> map = new HashMap<>();
+            ObjectMapper mapper = new ObjectMapper();
+
+            JsonNode root = mapper.readTree(response.getBody());
+            JsonNode referenceNode = root.path("transaction").path("reference");
+            String ref = referenceNode.asText();
+
+       /* String[] elements = response.getBody().split(":");
+        String[] value = elements[25].split(",");
+        String code = value[0].replaceAll("^\"|\"$|\\\"", "");*/
+            c1.setContent(ref);
+            c1.setReference(ref);
+            logger.info("THE API REFERENCE: "+c1.getContent());
+
+
+            map.put(getPaymentStatus(), updatePayment(c1.getContent(),phone));
+
+            Timer timer = new Timer();
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+
+
+                    try {
+                        doTheRestWithDelivery(products,user,destination);
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+
+            };
+            long delay = 70 * 1000;
+            logger.info("ACTION WILL COMPLETE IN 70 SECONDS PLEASE");//20 seconds in milliseconds
+            timer.schedule(task, delay);
+
+            // Return response body
+
+            return new ResponseEntity<>("PLEASE VALIDATE ON YOUR PHONE",HttpStatus.CREATED);
+        }
+        return new ResponseEntity<>("Please login",HttpStatus.UNAUTHORIZED);
+
+    }
     public Object doTheRest(List<Product> items,Optional<UserEntity> user) throws JsonProcessingException
     {
         String jsonString=getPaymentStatus();
@@ -293,7 +384,7 @@ public Object doAll(@RequestBody List<Product> products,
 
             }
             else {
-
+Receipt receipt =new Receipt();
                 for (Product  t: items) {
 
                     Purchaseobject po = new Purchaseobject();
@@ -306,13 +397,92 @@ public Object doAll(@RequestBody List<Product> products,
                     po.setAddedDate(new Date());
                     po.setPrice(t.getPrice());
                     purchaseObjectRepo.save(po);
-                    logger.info("Object saved to database");
+                    receipt.getPurchasedObjects().add(po);
+                    logger.info("Object saved to database and receipt created");
                 }
+                receipt.setDate(new Date());
+                receipt.setUser_id(user.get().getId());
                 System.out.println(items);
                 logger.info("Payment successful");
-                        return new ResponseEntity<>("Payment successful",HttpStatus.OK);
+                return new ResponseEntity<>("Payment successful",HttpStatus.OK);
             }
 
     }
+
+    public Object doTheRestWithDelivery(List<Product> items,Optional<UserEntity> user,String destination) throws JsonProcessingException
+    {
+        String jsonString=getPaymentStatus();
+        ObjectMapper Mapper = new ObjectMapper();
+
+        JsonNode rootNode = Mapper.readTree(jsonString);
+        JsonNode statusNode = rootNode.path("transaction").path("status");
+        String statusValue = statusNode.asText();
+        System.out.println("the status is: "+statusValue);
+        if(statusValue.equals("pending") || statusValue.equals("failed") || statusValue.equals("expired"))
+        {
+            // I have to produce code to cancel the action
+            cancelPayment();
+            System.out.println("ACTION FAILED AFTER 70 SECONDS");
+            logger.info("Payment was not successful");
+            return new ResponseEntity<>("Payment was not successful",HttpStatus.BAD_GATEWAY);
+
+        }
+        else {
+Delivery delivery = new Delivery();
+            Receipt receipt =new Receipt();
+            for (Product  t: items) {
+                Purchaseobject po = new Purchaseobject();
+                po.setName(t.getName());
+                po.setBought(true);
+                po.setUser_id(user.get().getId());
+                po.setDescription(t.getDescription());
+                po.setQuantity(t.getQuantity());
+                po.setBought(true);
+                po.setAddedDate(new Date());
+                po.setPrice(t.getPrice());
+                purchaseObjectRepo.save(po);
+                logger.info("Object saved to database");
+                receipt.getPurchasedObjects().add(po);
+                delivery.getProductList().add(po);
+            }
+
+            delivery.setUser_id(user.get().getId());
+            delivery.setDestination(destination);
+            delivery.setDelivered(true);
+            deliveryRepository.save(delivery);
+            receipt.setDate(new Date());
+            receipt.setUser_id(user.get().getId());
+
+
+            System.out.println(items);
+            logger.info("Payment successful");
+            return new ResponseEntity<>("Payment successful",HttpStatus.OK);
+        }
+
+    }
+    @PostMapping("form/cta/confirmation")
+    public Object sendCtaForm(@RequestBody List<Product> menus,
+                              @RequestParam int personNumber,
+                              @RequestParam String number,
+                              @RequestParam Date date,
+                              @RequestParam String location)
+    {
+        try {
+            CTA cta = new CTA();
+            cta.setDate(date);
+            cta.setLocation(location);
+            cta.setNumber(number);
+            cta.setPersonNumber(personNumber);
+            cta.getMenus().addAll(menus.stream().collect(Collectors.toList()));
+            ctaRepository.save(cta);
+            return new ResponseEntity<>("DATA SAVED CORRECTLY",HttpStatus.OK);
+        }
+        catch(Exception exception)
+        {
+            return new ResponseEntity<>("COULD NOT SAVE DATA BECAUSE "+exception.getLocalizedMessage(),HttpStatus.BAD_REQUEST);
+        }
+    }
 }
+
+
 

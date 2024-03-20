@@ -32,7 +32,8 @@ public class UserEntity implements Serializable {
     private Date dateOfBirth;
     @Nullable
     private String randomized;
-
+    @OneToMany(mappedBy = "user",cascade = CascadeType.ALL)
+    private List<Delivery> deliveries;
     @OneToMany(cascade = CascadeType.ALL,mappedBy = "user")
     private List<Purchaseobject> purchaseobjectList;
 
@@ -43,6 +44,10 @@ public class UserEntity implements Serializable {
             inverseJoinColumns = @JoinColumn(name="role_id", referencedColumnName = "id"))
     private List<Role> roles =  new ArrayList<>();
 
+    @JsonManagedReference(value = "delivery-user")
+    public List<Delivery> getDeliveries() {
+        return deliveries;
+    }
 
     public void setRoles(List<Role> roles) {
         this.roles = roles;
