@@ -231,7 +231,6 @@ public class ProductController {
         {
                 return new ResponseEntity<>(category.get().getProducts().parallelStream().collect(Collectors.toList()), HttpStatus.OK);
 
-
         } else {
             return new ResponseEntity<>("CATEGORY DOES NOT EXIST",HttpStatus.BAD_REQUEST);
         }
